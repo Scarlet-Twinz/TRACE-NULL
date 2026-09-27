@@ -1,173 +1,358 @@
 # TRACE//NULL
 
-**A small browser game about debugging a failing software system.**
+**A browser-based systems-debugging game where you investigate production incidents, identify root causes, and recover a failing system under pressure.**
 
-TRACE//NULL turns a familiar software-engineering problem — something is broken and you need to find out why — into a game.
+TRACE//NULL turns real software-engineering concepts—observability, dependency chains, queues, retries, resource exhaustion, diagnosis, and recovery—into a playable decision-making experience.
 
-You are the engineer on duty. A simulated production system is developing failures. You have limited time, incomplete information, logs, metrics, dependencies, and several possible repairs.
+You are not trying to click the correct button as quickly as possible. You are trying to **understand what is happening, use the available evidence, identify the underlying cause, and choose the repair that actually fixes it.**
 
-Your job is not to guess. Your job is to investigate the evidence, identify the root cause, and repair the system before it collapses.
+## Play the game
 
-## ▶ Play TRACE//NULL
+**[▶ PLAY TRACE//NULL](https://scarlet-twinz.github.io/TRACE-NULL/)**
 
-**[PLAY THE GAME](https://scarlet-twinz.github.io/TRACE-NULL/)** — open the live version directly in your browser.
+The live version runs entirely in the browser. No installation is required.
 
-No installation is required for the live version. The game runs entirely in the browser.
+If you want to inspect or run the project locally, the repository also includes the complete TypeScript source, tests, build configuration, and GitHub Actions workflows.
 
-## What is TRACE//NULL?
+---
 
-TRACE//NULL is a playable systems-debugging game built with TypeScript and Vite.
+## What is the game?
 
-The game simulates a small production system containing an API Gateway, Job Queue, Worker, Cache, and Database.
+TRACE//NULL simulates a small production system made up of:
 
-When an incident happens, the system starts becoming unstable. A failure can travel from one component to another, creating symptoms that make the original problem harder to see.
+- **API Gateway** — receives traffic and coordinates requests.
+- **Job Queue** — transports asynchronous work.
+- **Worker** — processes background jobs.
+- **Cache** — stores fast-access state.
+- **Database** — stores persistent application state.
 
-The central rule is simple:
+Something goes wrong inside this system.
 
-> Do not repair the loudest symptom. Find the root cause.
+The visible symptoms might be high latency, rising queue depth, memory pressure, failed requests, stale data, or exhausted connections. Those symptoms are clues, not necessarily the root cause.
 
-## Is it really a game?
+Your task is to work from the evidence toward the actual failure.
 
-Yes. TRACE//NULL has a complete game loop:
+The central rule is:
 
-1. An incident appears.
-2. You investigate it.
-3. You collect evidence.
-4. You make a root-cause diagnosis.
-5. You choose a repair.
-6. Correct decisions improve your result; bad decisions cost time and stability.
-7. You continue through a five-incident run.
-8. You receive a final run score.
+> **Debug the system, not the symptom.**
 
-The game has a timer, stability, hidden information, multiple choices, consequences, scoring, progression, win states, loss states, and replayability.
-
-It is intentionally a small game. The challenge comes from the decisions the player makes rather than from having a huge amount of content.
+---
 
 ## How to play
 
-### 1. Watch the incident
+When a run starts, the game presents an incident with a short briefing and several visible symptoms.
 
-You begin with an incident such as QUEUE STORM. You receive a short briefing and visible symptoms.
+For example, you might see a worker under heavy CPU load while the queue keeps growing.
 
-Symptoms are clues. They are not automatically the root cause.
+That does **not** automatically mean the worker itself is the root cause.
 
-### 2. Investigate the system
+The game gives you tools to investigate before you commit to a diagnosis.
 
-You have four investigation tools:
+### The investigation tools
 
-- TRACE — shows how a failure moves between components.
-- LOGS — shows events recorded by the simulated system.
-- METRICS — shows measurements such as CPU, memory, latency, queue depth, and errors.
-- DEPENDENCIES — shows which components depend on each other.
+There are four tools available:
 
-### 3. Build your evidence
+| Tool | What it tells you |
+| --- | --- |
+| **TRACE** | Shows how the failure is moving through the system and which components are involved. |
+| **LOGS** | Shows recorded events that can reveal repeated actions, errors, stale state, waits, retries, or other clues. |
+| **METRICS** | Shows system measurements such as CPU, memory, latency, queue depth, connection usage, and errors. |
+| **DEPENDENCIES** | Shows relationships between components and helps you understand which component depends on another. |
 
-Every investigation tool reveals evidence. The game remembers the evidence you collected so you can reason from several clues instead of relying on one clue.
+Each tool reveals evidence specific to the current incident.
 
-### 4. Diagnose the root cause
+You can use the same tool more than once, but the first use of a tool is more valuable than repeating it.
 
-Version 2 adds an explicit diagnosis step. You choose what you believe is actually causing the incident.
+### Evidence matters
 
-A correct diagnosis earns points. A wrong diagnosis costs stability and time.
+The game keeps the evidence you discover.
 
-This makes the game test reasoning rather than simple button clicking.
+You should compare clues rather than relying on a single symptom.
 
-### 5. Repair the system
+For example:
 
-After investigating, you choose a repair. Several actions may look reasonable, but only the correct repair addresses the real cause.
+- a queue is growing;
+- the worker CPU is high;
+- logs show the same job being retried repeatedly;
+- TRACE shows traffic returning from the worker to the queue.
 
-A correct repair stabilizes the system. A symptom-level repair wastes valuable time and stability.
+Taken together, those clues point toward a retry problem rather than simply "the API is slow."
 
-### 6. Survive the run
+That is the kind of reasoning TRACE//NULL is testing.
 
-Version 2 turns individual incidents into a complete run.
+---
 
-A run contains five randomly selected incidents from the incident library. Survive all five and the system is recovered.
+## Root-cause diagnosis
+
+After investigating, the **ROOT-CAUSE DIAGNOSIS** section gives you several possible explanations.
+
+Choose the diagnosis that best explains the evidence you collected.
+
+A correct diagnosis:
+
+- confirms the root cause;
+- awards points;
+- costs a small amount of time because making a decision takes time.
+
+A wrong diagnosis:
+
+- removes points;
+- reduces system stability;
+- costs additional time;
+- tells you to continue investigating.
+
+The game does not require you to diagnose immediately. You can keep investigating while the incident is still active.
+
+---
+
+## Repairing the system
+
+Once you are ready, use the **REPAIR CONSOLE**.
+
+The available repairs are intentionally designed so that more than one option can look reasonable.
+
+The important question is:
+
+> **Which repair addresses the underlying cause rather than the visible symptom?**
+
+A correct repair resolves the incident and awards the main repair score.
+
+A wrong repair does not end the run immediately, but it:
+
+- reduces stability;
+- costs time;
+- reduces your score;
+- gives you feedback explaining that the repair treated a symptom rather than the root cause.
+
+If you diagnose correctly and then choose the correct repair, you receive an additional bonus.
+
+---
+
+## Time and stability
+
+Every incident begins with:
+
+- **90 seconds**
+- **100% stability**
+
+Both matter.
+
+### Time
+
+The timer counts down continuously.
+
+Investigation, diagnosis, incorrect repairs, and time itself consume seconds.
+
+When the timer reaches zero, the system collapses and the incident is lost.
+
+### Stability
+
+Stability represents how close the simulated system is to becoming unrecoverable.
+
+It decreases gradually while the incident is active.
+
+Certain mistakes reduce it further.
+
+A correct repair restores some stability.
+
+If stability reaches zero before you resolve the incident, the system collapses.
+
+This means you have to balance investigation with action. Spending all your time collecting information is not automatically better than making a decision.
+
+---
+
+## The run
+
+TRACE//NULL is not just one incident.
+
+Each run contains **five randomly selected incidents** from the ten-incident library.
+
+Your score carries across the run.
+
+Resolve an incident and continue to the next one.
+
+Survive all five and the system is recovered.
+
+The run then ends with a **POST-INCIDENT REPORT** showing your final score and run information.
+
+You can start another run at any time. Because the five incidents are selected randomly, different runs can present a different sequence of failures.
+
+---
+
+## The incident library
+
+The current version contains ten incidents:
+
+| Incident | Core failure |
+| --- | --- |
+| **Queue Storm** | A worker retry policy loops failed jobs without a backoff limit. |
+| **Database Lock** | A long-running transaction holds a database lock. |
+| **Memory Leak** | A worker retains completed job objects and consumes increasing memory. |
+| **Cache Poisoning** | Invalid configuration state has been written into the shared cache. |
+| **Dependency Timeout** | A dependency timeout is larger than the request's available time budget. |
+| **Retry Cascade** | Immediate retries multiply traffic when a dependency becomes slow. |
+| **Connection Exhaustion** | Workers leak database connections instead of returning them to the pool. |
+| **Config Drift** | One worker is running an outdated configuration. |
+| **Dead Letter Flood** | A malformed producer continuously publishes invalid jobs. |
+| **Circuit Breaker** | A circuit-breaker threshold is too sensitive to short dependency spikes. |
+
+Each incident has its own:
+
+- briefing;
+- symptoms;
+- hidden root cause;
+- propagation path;
+- investigation evidence;
+- diagnosis choices;
+- repair choices; and
+- correct solution.
+
+---
+
+## A simple example
+
+Imagine the game reports:
+
+> **Requests are timing out. The worker fleet is saturated and the queue depth is climbing.**
+
+You might see:
+
+- high worker CPU;
+- increasing queue depth;
+- rising API latency.
+
+Instead of immediately restarting the API Gateway, investigate.
+
+If TRACE shows that failed jobs are returning to the worker, LOGS show the same job being retried repeatedly, and METRICS show an unusually high retry rate, you now have several independent clues pointing in the same direction.
+
+You can then diagnose the incident as a **queue retry loop** and select the repair that disables unlimited retries.
+
+The point is not memorizing that answer.
+
+The point is learning to connect:
+
+**symptom → evidence → root cause → repair**
+
+---
+
+## What makes a good run?
+
+A strong run is not simply about clicking every tool.
+
+You want to:
+
+1. Read the incident briefing.
+2. Identify the important symptoms.
+3. Investigate the components involved.
+4. Collect enough evidence to explain the failure.
+5. Connect evidence from different tools.
+6. Diagnose the underlying cause.
+7. Choose the repair that addresses that cause.
+8. Preserve as much time and stability as possible.
+9. Repeat the process across five incidents.
+
+You do **not** need prior production-engineering experience to play.
+
+The interface gives you the evidence. The challenge is learning how to reason from it.
+
+---
 
 ## Scoring
 
-Your score rewards good engineering decisions.
+Your score reflects the quality of your investigation and recovery.
 
-You can earn points for correctly diagnosing the root cause, collecting evidence, using investigation tools, repairing the correct failure, and preserving time.
+Points can come from:
 
-You can lose points or stability through incorrect diagnoses, bad repairs, and wasted time.
+- correct root-cause diagnosis;
+- successful incident repair;
+- using investigation tools;
+- collecting evidence;
+- remaining time;
+- completing incidents efficiently.
 
-At the end of a successful run, TRACE//NULL produces a final incident report containing the run score and summary information.
+Mistakes can reduce your score through:
 
-## Incidents
+- incorrect diagnoses;
+- incorrect repairs;
+- lost time;
+- lost stability.
 
-Version 2 contains ten incidents:
+The final score is produced after the five-incident run.
 
-| Incident | What the player investigates |
-| --- | --- |
-| Queue Storm | An unlimited worker retry loop |
-| Database Lock | A long-running database transaction |
-| Memory Leak | Retained objects consuming worker memory |
-| Cache Poisoning | Invalid state stored in the cache |
-| Dependency Timeout | A dependency timeout larger than the request budget |
-| Retry Cascade | Unbounded retries multiplying traffic |
-| Connection Exhaustion | Database connections leaking from workers |
-| Config Drift | One worker running outdated configuration |
-| Dead Letter Flood | A producer continuously creating invalid jobs |
-| Circuit Breaker | An overly sensitive dependency protection threshold |
-
-Each incident contains a briefing, symptoms, a hidden root cause, propagation steps, investigation evidence, possible diagnoses, possible repairs, and one correct solution.
+---
 
 ## System model
 
-TRACE//NULL represents a simplified production system:
+The simulated system is intentionally small:
 
-API Gateway → Cache / Job Queue → Worker → Database
+```
+                    ┌─────────┐
+                    │   API   │
+                    │ Gateway │
+                    └────┬────┘
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+         ┌─────────┐           ┌─────────┐
+         │  Cache  │           │  Queue  │
+         └─────────┘           └────┬────┘
+                                    │
+                                    ▼
+                               ┌─────────┐
+                               │ Worker  │
+                               └────┬────┘
+                                    │
+                                    ▼
+                               ┌─────────┐
+                               │Database │
+                               └─────────┘
+```
 
-The actual incident can change how those components behave. The player therefore has to understand relationships between components instead of treating every component as an isolated box.
+The actual failure path changes from incident to incident.
 
-## Version 2 improvements
+That is why the system map, traces, logs, metrics, and dependency information are important.
 
-Version 1 established the basic idea: investigate a failure and repair it.
-
-Version 2 expands that idea without turning the project into something unnecessarily large.
-
-Version 1 had five incidents, investigation tools, evidence, repairs, stability, a timer, scoring, and win/loss states.
-
-Version 2 adds ten incidents, five-incident runs, explicit root-cause diagnosis, evidence collection, component telemetry, CPU/memory/latency/error metrics, more deceptive failure chains, diagnosis scoring, run progression, a final report, replayable runs, and an upgraded responsive interface.
-
-The original small architecture remains intact. V2 extends the game rules rather than rebuilding the project around unnecessary infrastructure.
+---
 
 ## Architecture
 
-TRACE//NULL is a frontend-only game.
+TRACE//NULL is intentionally frontend-only.
 
-There is no backend, database, authentication system, or external API required to play it.
+There is no backend, database, authentication system, or external API required to play the game.
 
-The important separation is between the game simulation and the user interface. The simulation owns incidents, state, evidence, scoring, diagnosis, repairs, and failure rules. The interface displays that state and lets the player interact with it.
+The project separates the game simulation from the browser interface:
 
-This makes the core game rules easier to test without requiring a browser.
+- `src/game.ts` contains the incident library, game state, evidence, diagnosis rules, repair rules, scoring, stability, timer, and game-over logic.
+- `src/main.ts` renders the interface and connects player actions to the simulation.
+- `src/style.css` contains the responsive control-room interface.
+- `src/game.test.ts` tests the core game rules.
+- GitHub Actions validates the project and builds the production version.
+
+Keeping the simulation separate from the interface makes the core rules testable without requiring a browser.
+
+---
 
 ## Repository structure
 
+```text
 TRACE-NULL/
-
 ├── src/
-
-│   ├── game.ts          — game state, incidents, rules, scoring
-
-│   ├── game.test.ts     — simulation tests
-
-│   ├── main.ts          — browser UI and game loop
-
-│   └── style.css        — interface styling
-
-├── .github/workflows/
-
-│   └── ci.yml           — GitHub Actions quality gate
-
-├── index.html           — browser entry point
-
-├── package.json         — scripts and dependencies
-
-├── tsconfig.json        — TypeScript configuration
-
+│   ├── game.ts                 # game simulation and rules
+│   ├── game.test.ts            # automated game tests
+│   ├── main.ts                 # browser UI and game loop
+│   └── style.css               # interface styling
+├── .github/
+│   └── workflows/
+│       ├── ci.yml              # tests and production build
+│       └── deploy-pages.yml    # GitHub Pages deployment
+├── index.html                  # browser entry point
+├── package.json                # scripts and dependencies
+├── tsconfig.json               # TypeScript configuration
+├── vite.config.ts              # Vite configuration
 └── README.md
+```
+
+---
 
 ## Technology
 
@@ -176,15 +361,42 @@ TRACE-NULL/
 | Language | TypeScript |
 | Build tool | Vite |
 | Testing | Vitest |
-| Interface | HTML and CSS |
+| Interface | HTML, CSS |
 | Runtime | Browser |
+| Deployment | GitHub Pages |
 | CI | GitHub Actions |
 | Backend | None |
 | Database | None |
+| External API | None |
 
-The project deliberately avoids unnecessary infrastructure. The game does not need a server to demonstrate its core idea.
+The project deliberately keeps the infrastructure small because the engineering concept being demonstrated is the simulation and decision-making system itself.
 
-## Getting started
+---
+
+## Run locally
+
+The live version is the easiest way to play.
+
+If you want to inspect the code or run your own development copy, clone the repository:
+
+```bash
+git clone https://github.com/Scarlet-Twinz/TRACE-NULL.git
+cd TRACE-NULL
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Vite will print the local development address in the terminal. Open that address in a modern browser.
 
 ### Requirements
 
@@ -192,96 +404,126 @@ The project deliberately avoids unnecessary infrastructure. The game does not ne
 - npm
 - A modern web browser
 
-### Download the project
-
-You can download the repository directly from GitHub using the Code → Download ZIP option, or clone it with:
-
-    git clone https://github.com/Scarlet-Twinz/TRACE-NULL.git
-    cd TRACE-NULL
-
-### Install dependencies
-
-    npm install
-
-### Start the game
-
-    npm run dev
-
-Vite will provide a local address, normally similar to http://localhost:5173. Open that address in your browser.
+---
 
 ## Testing
 
-Run the automated simulation tests with:
+Run the automated tests:
 
-    npm test
+```bash
+npm test
+```
 
-Check the production build with:
+Create the production build:
 
-    npm run build
+```bash
+npm run build
+```
 
-## CI
+The project uses GitHub Actions to run the automated checks and validate the production build.
 
-Every pull request is checked by GitHub Actions.
-
-The CI workflow checks out the repository, installs Node.js dependencies, runs the automated tests, creates the production build, and reports whether the quality gate passed.
-
-Version 2 was verified through this CI path before being merged.
+---
 
 ## Deployment
 
-TRACE//NULL is a static browser application. It can be deployed to Vercel, GitHub Pages, or another static hosting provider.
+The production game is deployed as a static site through GitHub Pages.
 
-No server-side runtime is required.
+**Live game:** https://scarlet-twinz.github.io/TRACE-NULL/
+
+There is no server-side runtime required for the game.
+
+---
 
 ## Design principles
 
-### Keep the game small
+### Evidence before assumptions
 
-TRACE//NULL is not trying to become a huge game. The goal is a polished, understandable experience with a strong central mechanic.
+The player should have enough information to investigate a failure instead of simply guessing the intended answer.
 
-### Make the engineering visible
+### Symptoms are not causes
 
-The game should help players understand what is happening instead of hiding everything behind an opaque score.
+A visible failure may be several steps away from the original problem.
 
-### Separate symptoms from causes
+### Engineering concepts become mechanics
 
-A visible failure is not necessarily the original failure. That distinction is the central mechanic.
+Queues, retries, dependencies, observability, resource exhaustion, propagation, diagnosis, and recovery are part of the gameplay rather than background terminology.
 
-### Keep the simulation testable
+### Simulation and interface stay separate
 
-Game rules should be deterministic and testable independently from the interface.
+The rules should remain testable independently from the browser presentation.
 
-### Avoid unnecessary infrastructure
+### Small scope, complete experience
 
-There is no reason to add a backend simply because the project is a software project.
+TRACE//NULL is intentionally a compact game. It focuses on making one core mechanic—systems debugging—work well instead of adding unnecessary infrastructure.
+
+---
 
 ## Why this project exists
 
-Most software projects demonstrate that an application can store data, expose an API, display information, or automate a workflow.
+Many software projects demonstrate applications by showing CRUD interfaces, APIs, dashboards, or database workflows.
 
-TRACE//NULL explores something different:
+TRACE//NULL explores a different question:
 
-> Can software-engineering concepts themselves become the mechanics of a game?
+> **Can software-engineering reasoning itself become the gameplay?**
 
-The game uses ideas that appear in real engineering work: dependency graphs, event propagation, observability, logs, metrics, queues, retries, resource exhaustion, state transitions, failure handling, root-cause analysis, and recovery.
+The project uses concepts found in real engineering work:
 
-A beginner can play it without knowing those concepts beforehand. Someone with a software-engineering background can also recognize why those concepts matter.
+- observability;
+- dependency graphs;
+- event propagation;
+- logs and metrics;
+- queues and retries;
+- resource exhaustion;
+- state transitions;
+- failure handling;
+- root-cause analysis; and
+- recovery.
 
-That is intentional.
+The result is a small game that can be played by someone who has never worked in production engineering while still being recognizable to someone who has.
+
+---
 
 ## Current status
 
-**Version 2 — playable and CI-verified.**
+**Version 2 — playable, tested, and deployed.**
 
-The current release contains the complete V2 game loop, ten incidents, investigation and diagnosis mechanics, five-incident runs, scoring, final results, responsive UI, automated tests, and GitHub Actions validation.
+The current release includes:
 
-The project is intentionally treated as a small finished game rather than an unfinished foundation for a much larger game.
+- ten incidents;
+- five-incident randomized runs;
+- four investigation tools;
+- evidence collection;
+- explicit root-cause diagnosis;
+- diagnosis penalties and rewards;
+- repair decisions;
+- stability management;
+- a 90-second incident timer;
+- telemetry and system metrics;
+- scoring;
+- win and loss states;
+- a final post-incident report;
+- responsive control-room UI;
+- automated tests;
+- GitHub Actions CI; and
+- GitHub Pages deployment.
+
+---
 
 ## Future ideas
 
-Possible future improvements include sound effects, subtle system-failure animations, more advanced incident chains, accessibility improvements, keyboard shortcuts, additional difficulty modes, and a local high-score history.
+Possible future improvements include:
 
-These are future ideas, not requirements for the current release.
+- sound effects;
+- more advanced incident chains;
+- accessibility improvements;
+- keyboard shortcuts;
+- additional difficulty modes;
+- richer failure animations; and
+- local high-score history.
+
+These are future ideas, not requirements for the current version.
+
+---
 
 ## Author
 
@@ -291,10 +533,10 @@ Full-stack and systems-focused developer building projects across web applicatio
 
 ## Project links
 
-- Repository: https://github.com/Scarlet-Twinz/TRACE-NULL
-- Author: Anthony Emmanuella Mmasinachi
-- GitHub: https://github.com/Scarlet-Twinz
+- **Repository:** https://github.com/Scarlet-Twinz/TRACE-NULL
+- **Live game:** https://scarlet-twinz.github.io/TRACE-NULL/
+- **GitHub:** https://github.com/Scarlet-Twinz
 
 ## License
 
-This repository is intended as a personal project and portfolio work. See the repository for the applicable licensing information.
+This is a personal portfolio project. No open-source license is currently included.
