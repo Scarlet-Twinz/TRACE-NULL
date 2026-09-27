@@ -56,7 +56,7 @@ export const INCIDENTS: Incident[] = [
       DEPENDENCIES: ["Worker depends on Queue", "Gateway waits on Worker for async jobs"]
     },
     fixes: ["Disable unlimited retries", "Restart the API Gateway", "Flush the database"],
-    correctFix: "Disable unlimited retries"
+    correctFix: "Disable unlimited retries", diagnoses:["Database failure","Queue retry loop","Gateway overload","Worker memory leak"], correctDiagnosis:"Queue retry loop"
   },
   {
     id: "database-lock",
@@ -72,7 +72,7 @@ export const INCIDENTS: Incident[] = [
       DEPENDENCIES: ["Worker writes to Database", "Gateway reads cached state"]
     },
     fixes: ["Terminate the long transaction", "Restart the Gateway", "Clear the cache"],
-    correctFix: "Terminate the long transaction"
+    correctFix: "Terminate the long transaction", diagnoses:["Database lock","Queue retry loop","Cache poisoning","Gateway overload"], correctDiagnosis:"Database lock"
   },
   {
     id: "memory-leak",
@@ -88,7 +88,7 @@ export const INCIDENTS: Incident[] = [
       DEPENDENCIES: ["Worker memory is local", "Queue remains healthy"]
     },
     fixes: ["Clear retained job history", "Restart the database", "Increase gateway timeout"],
-    correctFix: "Clear retained job history"
+    correctFix: "Clear retained job history", diagnoses:["Worker memory leak","Database lock","Dependency timeout","Cache poisoning"], correctDiagnosis:"Worker memory leak"
   },
   {
     id: "cache-poisoning",
@@ -104,7 +104,7 @@ export const INCIDENTS: Incident[] = [
       DEPENDENCIES: ["Gateway → Cache", "Cache fallback → Database"]
     },
     fixes: ["Invalidate the poisoned cache key", "Restart the worker", "Scale the queue"],
-    correctFix: "Invalidate the poisoned cache key"
+    correctFix: "Invalidate the poisoned cache key", diagnoses:["Cache poisoning","Database lock","Gateway overload","Queue retry loop"], correctDiagnosis:"Cache poisoning"
   },
   {
     id: "dependency-timeout",
@@ -120,7 +120,7 @@ export const INCIDENTS: Incident[] = [
       DEPENDENCIES: ["Gateway calls Payment", "Payment is outside the database path"]
     },
     fixes: ["Reduce payment timeout to the request budget", "Flush the cache", "Restart the database"],
-    correctFix: "Reduce payment timeout to the request budget"
+    correctFix: "Reduce payment timeout to the request budget", diagnoses:["Dependency timeout","Database lock","Queue retry loop","Worker memory leak"], correctDiagnosis:"Dependency timeout"
   }
 ];
 
