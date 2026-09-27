@@ -292,3 +292,5 @@ Full-stack and systems-focused developer building projects across web applicatio
 ## License
 
 This repository is intended as a personal project and portfolio work. See the repository for the applicable licensing information.
+
+CI verification follows the V2 release gate.
