@@ -8,6 +8,12 @@ You are the engineer on duty. A simulated production system is developing failur
 
 Your job is not to guess. Your job is to investigate the evidence, identify the root cause, and repair the system before it collapses.
 
+## ▶ Play TRACE//NULL
+
+**[PLAY THE GAME](https://scarlet-twinz.github.io/TRACE-NULL/)** — open the live version directly in your browser.
+
+No installation is required for the live version. The game runs entirely in the browser.
+
 ## What is TRACE//NULL?
 
 TRACE//NULL is a playable systems-debugging game built with TypeScript and Vite.
