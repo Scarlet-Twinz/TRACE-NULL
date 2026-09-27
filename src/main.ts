@@ -1,100 +1,18 @@
 import "./style.css";
-import { INCIDENTS, applyFix, createGame, isGameOver, tick, useTool, type GameState, type Tool } from "./game";
-
-let state = createGame();
-let timer: number | undefined;
-
-const app = document.querySelector<HTMLDivElement>("#app")!;
-
-const toolLabels: Tool[] = ["TRACE", "LOGS", "METRICS", "DEPENDENCIES"];
-
-function render() {
-  const gameOver = isGameOver(state);
-  const componentMarkup = state.components.map((component) => `
-    <div class="node node-${component.state}">
-      <span class="node-dot"></span>
-      <div><strong>${component.name}</strong><small>${component.role}</small></div>
-    </div>`).join("");
-
-  app.innerHTML = `
-    <main class="shell">
-      <header class="topbar">
-        <div class="brand"><span>TRACE</span><b>//</b><span>NULL</span></div>
-        <div class="status"><span class="pulse"></span> LIVE INCIDENT</div>
-        <button class="restart" data-action="restart">RESTART</button>
-      </header>
-
-      <section class="hero">
-        <div>
-          <p class="eyebrow">PRODUCTION / SIMULATION-07</p>
-          <h1>${state.incident.title}</h1>
-          <p class="briefing">${state.incident.briefing}</p>
-        </div>
-        <div class="stats">
-          <div><span>STABILITY</span><strong class="${state.stability < 35 ? "danger" : ""}">${Math.round(state.stability)}%</strong></div>
-          <div><span>TIME</span><strong class="${state.time < 20 ? "danger" : ""}">${state.time}s</strong></div>
-          <div><span>SCORE</span><strong>${Math.round(state.score)}</strong></div>
-        </div>
-      </section>
-
-      <section class="layout">
-        <div class="panel system-panel">
-          <div class="panel-title"><span>SYSTEM TOPOLOGY</span><em>dependency graph</em></div>
-          <div class="topology">${componentMarkup}</div>
-          <div class="chain">${state.incident.propagation.map((item, i) => `<span>${item}</span>${i < state.incident.propagation.length - 1 ? "<b>→</b>" : ""}`).join("")}</div>
-        </div>
-
-        <div class="panel evidence-panel">
-          <div class="panel-title"><span>INVESTIGATION</span><em>${state.usedTools.length}/4 tools used</em></div>
-          <div class="tools">${toolLabels.map((tool) => `<button class="tool ${state.usedTools.includes(tool) ? "used" : ""}" data-tool="${tool}"><b>${tool}</b><small>inspect evidence</small></button>`).join("")}</div>
-          <div class="feedback"><span>&gt;</span> ${state.feedback}</div>
-          <div class="logs">${state.history.slice(-7).map((line) => `<div>${line}</div>`).join("")}</div>
-        </div>
-      </section>
-
-      <section class="panel repair-panel">
-        <div class="panel-title"><span>REPAIR CONSOLE</span><em>choose carefully</em></div>
-        <div class="fixes">${state.incident.fixes.map((fix) => `<button class="fix" data-fix="${fix}" ${state.resolved || gameOver ? "disabled" : ""}>${fix}<span>↗</span></button>`).join("")}</div>
-        ${state.resolved ? '<div class="result success">✓ INCIDENT RESOLVED — SYSTEM STABILIZED</div>' : gameOver ? '<div class="result fail">× SYSTEM COLLAPSED — TRACE LOST</div>' : ""}
-      </section>
-
-      <footer>TRACE//NULL <span>debug the system, not the symptom.</span></footer>
-    </main>`;
-
-  document.querySelectorAll<HTMLButtonElement>("[data-tool]").forEach((button) => {
-    button.onclick = () => {
-      state = useTool(state, button.dataset.tool as Tool);
-      render();
-    };
-  });
-
-  document.querySelectorAll<HTMLButtonElement>("[data-fix]").forEach((button) => {
-    button.onclick = () => {
-      state = applyFix(state, button.dataset.fix!);
-      render();
-    };
-  });
-
-  document.querySelector<HTMLButtonElement>("[data-action=restart]")!.onclick = () => {
-    state = createGame(INCIDENTS[Math.floor(Math.random() * INCIDENTS.length)]);
-    startTimer();
-    render();
-  };
-}
-
-function startTimer() {
-  if (timer) window.clearInterval(timer);
-  timer = window.setInterval(() => {
-    const next = tick(state);
-    if (next !== state) {
-      state = next;
-      render();
-    }
-    if (isGameOver(state) || state.resolved) {
-      window.clearInterval(timer);
-    }
-  }, 1000);
-}
-
-render();
-startTimer();
+import { INCIDENTS, applyFix, createGame, isGameOver, submitDiagnosis, tick, useTool, type GameState, type Tool } from "./game";
+const RUN_LENGTH=5; let order=INCIDENTS.slice(0,RUN_LENGTH), index=0,total=0,state:GameState=createGame(order[0]); let timer:number|undefined;
+const tools:Tool[]=["TRACE","LOGS","METRICS","DEPENDENCIES"];
+const shuffle=<T,>(a:T[])=>a.sort(()=>Math.random()-.5);
+function newRun(){order=shuffle([...INCIDENTS]).slice(0,RUN_LENGTH);index=0;total=0;state=createGame(order[0]);start();render()}
+function next(){total+=state.score;index++;if(index>=RUN_LENGTH)return complete();state=createGame(order[index]);start();render()}
+function render(){const over=isGameOver(state);app.innerHTML=`
+<main class="shell"><header class="topbar"><div class="brand">TRACE<b>//</b>NULL</div><div class="run">INCIDENT ${index+1}/${RUN_LENGTH} <span class="pulse"></span> LIVE</div><button class="restart" data-a="restart">NEW RUN</button></header>
+<section class="hero"><div><p class="eyebrow">PRODUCTION / SIMULATION-07</p><h1>${state.incident.title}</h1><p class="briefing">${state.incident.briefing}</p><div class="symptoms">${state.incident.symptoms.map(x=>`<span>• ${x}</span>`).join("")}</div></div><div class="stats"><div><span>STABILITY</span><strong class="${state.stability<35?"danger":""}">${Math.round(state.stability)}%</strong></div><div><span>TIME</span><strong class="${state.time<20?"danger":""}">${state.time}s</strong></div><div><span>SCORE</span><strong>${Math.round(state.score)}</strong></div></div></section>
+<section class="layout"><div class="panel"><div class="panel-title"><span>SYSTEM MAP</span><em>live telemetry</em></div><div class="topology">${state.components.map(c=>`<div class="node"><b>● ${c.name}</b><small>${c.role}</small><span>CPU ${c.id==="worker"&&state.incident.id==="queue-storm"?99:c.cpu}%</span><span>MEM ${c.memory}%</span><span>LAT ${c.latency}ms</span></div>`).join("")}</div><div class="chain">${state.incident.propagation.map((x,i)=>`<span>${x}</span>${i<state.incident.propagation.length-1?"<b>→</b>":""}`).join("")}</div></div>
+<div class="panel"><div class="panel-title"><span>INVESTIGATION</span><em>${state.evidence.length} evidence items</em></div><div class="tools">${tools.map(t=>`<button class="tool ${state.usedTools.includes(t)?"used":""}" data-tool="${t}" ${over||state.resolved?"disabled":""}><b>${t}</b><small>inspect evidence</small></button>`).join("")}</div><div class="feedback"><span>&gt;</span> ${state.feedback}</div><div class="logs">${state.history.slice(-6).map(x=>`<div>${x}</div>`).join("")}</div></div></section>
+<section class="panel"><div class="panel-title"><span>ROOT-CAUSE DIAGNOSIS</span><em>make your call</em></div><div class="diagnoses">${state.incident.diagnoses.map(d=>`<button class="diagnosis ${state.diagnosis===d?(d===state.incident.correctDiagnosis?"correct":"wrong"):""}" data-diagnosis="${d}" ${over||state.resolved?"disabled":""}>${d}<span>○</span></button>`).join("")}</div></section>
+<section class="panel"><div class="panel-title"><span>REPAIR CONSOLE</span><em>fix the cause, not the symptom</em></div><div class="fixes">${state.incident.fixes.map(f=>`<button class="fix" data-fix="${f}" ${over||state.resolved?"disabled":""}>${f}<span>↗</span></button>`).join("")}</div>${state.resolved?`<div class="result success">✓ INCIDENT RESOLVED <button data-a="next">${index+1<RUN_LENGTH?"CONTINUE →":"VIEW RESULTS →"}</button></div>`:""}${over?'<div class="result fail">× SYSTEM COLLAPSED <button data-a="restart">RESTART RUN</button></div>':""}</section><footer><span>TRACE//NULL</span><em>debug the system, not the symptom.</em></footer></main>`;bind()}
+function complete(){if(timer)clearInterval(timer);app.innerHTML=`<main class="shell complete"><div class="complete-card"><p class="eyebrow">POST-INCIDENT REPORT</p><h1>SYSTEM RECOVERED</h1><p>You survived five incidents in this run.</p><div class="final-score"><span>FINAL SCORE</span><strong>${Math.round(total)}</strong></div><div class="report"><div><b>INCIDENTS</b><span>5 / 5</span></div><div><b>LAST STABILITY</b><span>${Math.round(state.stability)}%</span></div><div><b>DIAGNOSIS</b><span>${state.diagnosis?"CONFIRMED":"NOT RECORDED"}</span></div></div><button class="primary" data-a="restart">PLAY AGAIN</button></div></main>`;bind()}
+function bind(){document.querySelectorAll<HTMLButtonElement>("[data-tool]").forEach(b=>b.onclick=()=>{state=useTool(state,b.dataset.tool as Tool);render()});document.querySelectorAll<HTMLButtonElement>("[data-diagnosis]").forEach(b=>b.onclick=()=>{state=submitDiagnosis(state,b.dataset.diagnosis!);render()});document.querySelectorAll<HTMLButtonElement>("[data-fix]").forEach(b=>b.onclick=()=>{state=applyFix(state,b.dataset.fix!);render()});document.querySelectorAll<HTMLButtonElement>("[data-a=restart]").forEach(b=>b.onclick=newRun);document.querySelector<HTMLButtonElement>("[data-a=next]")?.addEventListener("click",next)}
+function start(){if(timer)clearInterval(timer);timer=setInterval(()=>{const n=tick(state);if(n!==state){state=n;render()}if(isGameOver(state)||state.resolved)clearInterval(timer)},1000)}
+const app=document.querySelector<HTMLDivElement>("#app")!;render();start();
