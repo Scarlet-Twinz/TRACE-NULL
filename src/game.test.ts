@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { INCIDENTS, applyFix, createGame, isGameOver, tick, useTool } from "./game";
+import { INCIDENTS, applyFix, createGame, isGameOver, submitDiagnosis, tick, useTool } from "./game";
 
-describe("TRACE//NULL simulation", () => {
+describe("TRACE//NULL V2 simulation", () => {
+  it("ships ten incidents for replayable runs", () => {
+    expect(INCIDENTS).toHaveLength(10);
+  });
   it("starts a fresh incident at full stability", () => {
     const state = createGame();
     expect(state.stability).toBe(100);
@@ -13,6 +16,12 @@ describe("TRACE//NULL simulation", () => {
     const state = useTool(createGame(INCIDENTS[1]), "LOGS");
     expect(state.usedTools).toContain("LOGS");
     expect(state.feedback).toContain("waiting for lock");
+  });
+
+  it("rewards a correct root-cause diagnosis", () => {
+    const state = submitDiagnosis(createGame(INCIDENTS[0]), "Queue retry loop");
+    expect(state.score).toBe(100);
+    expect(state.feedback).toContain("CONFIRMED");
   });
 
   it("resolves an incident with the correct root-cause repair", () => {
