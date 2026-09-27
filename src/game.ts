@@ -6,7 +6,11 @@ export interface Component {
   id: string;
   name: string;
   role: string;
-  state: ComponentState;
+  state: "healthy" | "degraded" | "failed";
+  cpu: number;
+  memory: number;
+  latency: number;
+  errors: number;
 }
 
 export interface Incident {
@@ -19,6 +23,8 @@ export interface Incident {
   evidence: Record<Tool, string[]>;
   fixes: string[];
   correctFix: string;
+  diagnoses: string[];
+  correctDiagnosis: string;
 }
 
 export interface GameState {
@@ -28,17 +34,19 @@ export interface GameState {
   score: number;
   time: number;
   usedTools: Tool[];
+  evidence: string[];
+  diagnosis: string | null;
   resolved: boolean;
   feedback: string;
   history: string[];
 }
 
 const BASE_COMPONENTS: Component[] = [
-  { id: "gateway", name: "API Gateway", role: "traffic entry", state: "healthy" },
-  { id: "queue", name: "Job Queue", role: "async transport", state: "healthy" },
-  { id: "worker", name: "Worker", role: "background compute", state: "healthy" },
-  { id: "cache", name: "Cache", role: "fast state", state: "healthy" },
-  { id: "database", name: "Database", role: "persistent state", state: "healthy" }
+  { id:"gateway",name:"API Gateway",role:"traffic entry",state:"healthy",cpu:42,memory:48,latency:41,errors:1 },
+  { id:"queue",name:"Job Queue",role:"async transport",state:"healthy",cpu:18,memory:31,latency:12,errors:0 },
+  { id:"worker",name:"Worker",role:"background compute",state:"healthy",cpu:36,memory:44,latency:76,errors:2 },
+  { id:"cache",name:"Cache",role:"fast state",state:"healthy",cpu:12,memory:37,latency:8,errors:0 },
+  { id:"database",name:"Database",role:"persistent state",state:"healthy",cpu:34,memory:52,latency:43,errors:0 }
 ];
 
 export const INCIDENTS: Incident[] = [
@@ -121,6 +129,21 @@ export const INCIDENTS: Incident[] = [
     },
     fixes: ["Reduce payment timeout to the request budget", "Flush the cache", "Restart the database"],
     correctFix: "Reduce payment timeout to the request budget", diagnoses:["Dependency timeout","Database lock","Queue retry loop","Worker memory leak"], correctDiagnosis:"Dependency timeout"
+  },
+  {
+    id:"retry-cascade",title:"RETRY CASCADE",briefing:"A slow dependency causes retries to multiply.",rootCause:"The client retries every failed call immediately with no cap.",symptoms:["Slow dependency","Immediate retries","Traffic multiplication"],propagation:["Slow dependency","Immediate retries","Traffic multiplication","Gateway saturation"],evidence:{TRACE:["gateway emits repeated calls","retry traffic exceeds user traffic"],LOGS:["retry attempt=9","retry attempt=10"],METRICS:["retry rate: 41/s","gateway concurrency: 97%"],DEPENDENCIES:["Gateway calls dependency","Retries originate at Gateway"]},fixes:["Add bounded exponential backoff","Restart the database","Clear the cache"],correctFix:"Add bounded exponential backoff",diagnoses:["Retry cascade","Database lock","Cache poisoning","Memory leak"],correctDiagnosis:"Retry cascade"
+  },
+  {
+    id:"connection-exhaustion",title:"CONNECTION EXHAUSTION",briefing:"Database requests are waiting for connections.",rootCause:"Workers open database connections without returning them.",symptoms:["Leaked connections","Pool exhaustion","Worker wait"],propagation:["Leaked connections","Pool exhaustion","Worker wait"],evidence:{TRACE:["worker opens database connections","connections never return"],LOGS:["pool active=100","pool idle=0"],METRICS:["pool usage: 100%","waiters: 27"],DEPENDENCIES:["Worker → Database","Database pool is shared"]},fixes:["Return connections to the pool","Restart the Gateway","Invalidate the cache"],correctFix:"Return connections to the pool",diagnoses:["Connection exhaustion","Database lock","Queue retry loop","Dependency timeout"],correctDiagnosis:"Connection exhaustion"
+  },
+  {
+    id:"config-drift",title:"CONFIG DRIFT",briefing:"One worker behaves differently after deployment.",rootCause:"The worker is running an outdated configuration value.",symptoms:["Old config","Different behavior","Partial failure"],propagation:["Old config","Different behavior","Partial failure"],evidence:{TRACE:["one worker differs from peers","gateway routes to both versions"],LOGS:["worker-a config=v18","worker-b config=v17"],METRICS:["worker-a errors: 1%","worker-b errors: 42%"],DEPENDENCIES:["Gateway distributes to workers","Workers should share config"]},fixes:["Reload the worker configuration","Flush the database","Scale the queue"],correctFix:"Reload the worker configuration",diagnoses:["Config drift","Memory leak","Cache poisoning","Database lock"],correctDiagnosis:"Config drift"
+  },
+  {
+    id:"dead-letter-flood",title:"DEAD LETTER FLOOD",briefing:"Invalid jobs are filling the dead-letter queue.",rootCause:"A malformed producer continuously publishes invalid payloads.",symptoms:["Malformed producer","Rejected jobs","Dead-letter growth"],propagation:["Malformed producer","Rejected jobs","Dead-letter growth","Storage pressure"],evidence:{TRACE:["producer → queue payload is malformed","consumer rejects before processing"],LOGS:["schema validation failed","dead-lettered job=7721"],METRICS:["DLQ depth: 12440","storage: 88%"],DEPENDENCIES:["Producer writes Queue","Consumer validates jobs"]},fixes:["Stop the malformed producer","Restart the database","Increase gateway timeout"],correctFix:"Stop the malformed producer",diagnoses:["Dead-letter flood","Queue retry loop","Database lock","Cache poisoning"],correctDiagnosis:"Dead-letter flood"
+  },
+  {
+    id:"circuit-breaker",title:"CIRCUIT BREAKER",briefing:"The gateway opened its circuit during a short dependency spike.",rootCause:"The circuit breaker threshold is too sensitive.",symptoms:["Latency spike","Circuit opens","Fallback path"],propagation:["Latency spike","Circuit opens","Fallback path","User errors"],evidence:{TRACE:["gateway bypasses dependency","fallback path carries traffic"],LOGS:["circuit=open","threshold=5%"],METRICS:["dependency p95: 2.1s","fallback traffic: 71%"],DEPENDENCIES:["Gateway → Dependency","Gateway → Fallback"]},fixes:["Tune the circuit threshold and recovery window","Clear the cache","Restart the database"],correctFix:"Tune the circuit threshold and recovery window",diagnoses:["Circuit breaker","Dependency timeout","Gateway overload","Cache poisoning"],correctDiagnosis:"Circuit breaker"
   }
 ];
 
@@ -132,6 +155,8 @@ export function createGame(incident = INCIDENTS[0]): GameState {
     score: 0,
     time: 90,
     usedTools: [],
+    evidence: [],
+    diagnosis: null,
     resolved: false,
     feedback: "Incident detected. Find the root cause.",
     history: ["SYSTEM: incident detected", `ALERT: ${incident.title}`]
@@ -144,11 +169,18 @@ export function useTool(state: GameState, tool: Tool): GameState {
   return {
     ...state,
     usedTools: firstUse ? [...state.usedTools, tool] : state.usedTools,
+    evidence: [...new Set([...state.evidence, ...state.incident.evidence[tool]])],
     time: Math.max(0, state.time - (firstUse ? 4 : 1)),
     stability: Math.max(0, state.stability - (firstUse ? 1 : 0)),
     feedback: state.incident.evidence[tool].join(" • "),
     history: [...state.history, `TOOL ${tool}: evidence revealed`]
   };
+}
+
+export function submitDiagnosis(state: GameState, diagnosis: string): GameState {
+  if (state.resolved || isGameOver(state)) return state;
+  if (diagnosis === state.incident.correctDiagnosis) return { ...state, diagnosis, score: state.score + 100, time: Math.max(0,state.time-2), feedback:"DIAGNOSIS CONFIRMED — root cause identified.", history:[...state.history, `DIAGNOSIS CONFIRMED: ${diagnosis}`] };
+  return { ...state, diagnosis, score:Math.max(0,state.score-35), stability:Math.max(0,state.stability-10), time:Math.max(0,state.time-5), feedback:"Diagnosis rejected. Keep tracing the evidence.", history:[...state.history, `DIAGNOSIS REJECTED: ${diagnosis}`] };
 }
 
 export function applyFix(state: GameState, fix: string): GameState {
@@ -158,7 +190,7 @@ export function applyFix(state: GameState, fix: string): GameState {
       ...state,
       resolved: true,
       stability: Math.min(100, state.stability + 15),
-      score: state.score + 100 + state.usedTools.length * 10 + state.time,
+      score: state.score + 100 + (state.diagnosis === state.incident.correctDiagnosis ? 50 : 0) + state.usedTools.length * 10 + state.time,
       feedback: `ROOT CAUSE CONFIRMED — ${state.incident.rootCause}`,
       history: [...state.history, `FIX APPLIED: ${fix}`, "SYSTEM: incident resolved"]
     };
