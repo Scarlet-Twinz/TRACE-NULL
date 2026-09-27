@@ -56,3 +56,7 @@ npm run build
 Most of my portfolio demonstrates that I can build production-style systems. TRACE//NULL demonstrates the same engineering thinking through an interactive simulation: dependency graphs, event propagation, state transitions, failure handling, observability, and recovery.
 
 The project is small by design. The interesting part is the simulation, not the amount of code.
+
+## CI
+
+Every pull request runs the test suite and production build before merge.
