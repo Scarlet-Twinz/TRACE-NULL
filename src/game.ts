@@ -6,7 +6,11 @@ export interface Component {
   id: string;
   name: string;
   role: string;
-  state: ComponentState;
+  state: "healthy" | "degraded" | "failed";
+  cpu: number;
+  memory: number;
+  latency: number;
+  errors: number;
 }
 
 export interface Incident {
@@ -30,17 +34,19 @@ export interface GameState {
   score: number;
   time: number;
   usedTools: Tool[];
+  evidence: string[];
+  diagnosis: string | null;
   resolved: boolean;
   feedback: string;
   history: string[];
 }
 
 const BASE_COMPONENTS: Component[] = [
-  { id: "gateway", name: "API Gateway", role: "traffic entry", state: "healthy" },
-  { id: "queue", name: "Job Queue", role: "async transport", state: "healthy" },
-  { id: "worker", name: "Worker", role: "background compute", state: "healthy" },
-  { id: "cache", name: "Cache", role: "fast state", state: "healthy" },
-  { id: "database", name: "Database", role: "persistent state", state: "healthy" }
+  { id:"gateway",name:"API Gateway",role:"traffic entry",state:"healthy",cpu:42,memory:48,latency:41,errors:1 },
+  { id:"queue",name:"Job Queue",role:"async transport",state:"healthy",cpu:18,memory:31,latency:12,errors:0 },
+  { id:"worker",name:"Worker",role:"background compute",state:"healthy",cpu:36,memory:44,latency:76,errors:2 },
+  { id:"cache",name:"Cache",role:"fast state",state:"healthy",cpu:12,memory:37,latency:8,errors:0 },
+  { id:"database",name:"Database",role:"persistent state",state:"healthy",cpu:34,memory:52,latency:43,errors:0 }
 ];
 
 export const INCIDENTS: Incident[] = [
@@ -58,7 +64,7 @@ export const INCIDENTS: Incident[] = [
       DEPENDENCIES: ["Worker depends on Queue", "Gateway waits on Worker for async jobs"]
     },
     fixes: ["Disable unlimited retries", "Restart the API Gateway", "Flush the database"],
-    correctFix: "Disable unlimited retries", diagnoses:["Database failure","Queue retry loop","Gateway overload","Worker memory leak"], correctDiagnosis:"Queue retry loop", diagnoses:["Database failure","Queue retry loop","Gateway overload","Worker memory leak"], correctDiagnosis:"Queue retry loop"
+    correctFix: "Disable unlimited retries", diagnoses:["Database failure","Queue retry loop","Gateway overload","Worker memory leak"], correctDiagnosis:"Queue retry loop"
   },
   {
     id: "database-lock",
@@ -74,7 +80,7 @@ export const INCIDENTS: Incident[] = [
       DEPENDENCIES: ["Worker writes to Database", "Gateway reads cached state"]
     },
     fixes: ["Terminate the long transaction", "Restart the Gateway", "Clear the cache"],
-    correctFix: "Terminate the long transaction", diagnoses:["Database lock","Queue retry loop","Cache poisoning","Gateway overload"], correctDiagnosis:"Database lock", diagnoses:["Database lock","Queue retry loop","Cache poisoning","Gateway overload"], correctDiagnosis:"Database lock"
+    correctFix: "Terminate the long transaction", diagnoses:["Database lock","Queue retry loop","Cache poisoning","Gateway overload"], correctDiagnosis:"Database lock"
   },
   {
     id: "memory-leak",
@@ -90,7 +96,7 @@ export const INCIDENTS: Incident[] = [
       DEPENDENCIES: ["Worker memory is local", "Queue remains healthy"]
     },
     fixes: ["Clear retained job history", "Restart the database", "Increase gateway timeout"],
-    correctFix: "Clear retained job history", diagnoses:["Worker memory leak","Database lock","Dependency timeout","Cache poisoning"], correctDiagnosis:"Worker memory leak", diagnoses:["Worker memory leak","Database lock","Dependency timeout","Cache poisoning"], correctDiagnosis:"Worker memory leak"
+    correctFix: "Clear retained job history", diagnoses:["Worker memory leak","Database lock","Dependency timeout","Cache poisoning"], correctDiagnosis:"Worker memory leak"
   },
   {
     id: "cache-poisoning",
@@ -106,7 +112,7 @@ export const INCIDENTS: Incident[] = [
       DEPENDENCIES: ["Gateway → Cache", "Cache fallback → Database"]
     },
     fixes: ["Invalidate the poisoned cache key", "Restart the worker", "Scale the queue"],
-    correctFix: "Invalidate the poisoned cache key", diagnoses:["Cache poisoning","Database lock","Gateway overload","Queue retry loop"], correctDiagnosis:"Cache poisoning", diagnoses:["Cache poisoning","Database lock","Gateway overload","Queue retry loop"], correctDiagnosis:"Cache poisoning"
+    correctFix: "Invalidate the poisoned cache key", diagnoses:["Cache poisoning","Database lock","Gateway overload","Queue retry loop"], correctDiagnosis:"Cache poisoning"
   },
   {
     id: "dependency-timeout",
@@ -122,7 +128,7 @@ export const INCIDENTS: Incident[] = [
       DEPENDENCIES: ["Gateway calls Payment", "Payment is outside the database path"]
     },
     fixes: ["Reduce payment timeout to the request budget", "Flush the cache", "Restart the database"],
-    correctFix: "Reduce payment timeout to the request budget", diagnoses:["Dependency timeout","Database lock","Queue retry loop","Worker memory leak"], correctDiagnosis:"Dependency timeout", diagnoses:["Dependency timeout","Database lock","Queue retry loop","Worker memory leak"], correctDiagnosis:"Dependency timeout"
+    correctFix: "Reduce payment timeout to the request budget", diagnoses:["Dependency timeout","Database lock","Queue retry loop","Worker memory leak"], correctDiagnosis:"Dependency timeout"
   },
   {
     id:"retry-cascade",title:"RETRY CASCADE",briefing:"A slow dependency causes retries to multiply.",rootCause:"The client retries every failed call immediately with no cap.",symptoms:["Slow dependency","Immediate retries","Traffic multiplication"],propagation:["Slow dependency","Immediate retries","Traffic multiplication","Gateway saturation"],evidence:{TRACE:["gateway emits repeated calls","retry traffic exceeds user traffic"],LOGS:["retry attempt=9","retry attempt=10"],METRICS:["retry rate: 41/s","gateway concurrency: 97%"],DEPENDENCIES:["Gateway calls dependency","Retries originate at Gateway"]},fixes:["Add bounded exponential backoff","Restart the database","Clear the cache"],correctFix:"Add bounded exponential backoff",diagnoses:["Retry cascade","Database lock","Cache poisoning","Memory leak"],correctDiagnosis:"Retry cascade"
