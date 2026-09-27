@@ -60,3 +60,5 @@ footer span { letter-spacing: 0; font-weight: 500; color: #59667a; }
   .topology { grid-template-columns: 1fr 1fr; }
   .fixes { grid-template-columns: 1fr; }
 }
+
+.diagnoses{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:14px}.diagnosis{display:flex;justify-content:space-between;gap:8px;text-align:left;padding:12px;border:1px solid #273145;background:#0e1420;color:#dce4f2;cursor:pointer}.diagnosis:hover:not(:disabled){border-color:#6d7cff}.diagnosis.correct{border-color:#315c4d;background:#0d1916;color:#73e2b1}.diagnosis.wrong{border-color:#65313a;color:#ff6e7f}.diagnosis:disabled{opacity:.55;cursor:not-allowed}.node span{display:block;margin-top:5px;color:#8190a6;font:600 9px ui-monospace,monospace}@media(max-width:850px){.diagnoses{grid-template-columns:1fr}}
