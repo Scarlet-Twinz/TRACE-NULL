@@ -537,6 +537,9 @@ Full-stack and systems-focused developer building projects across web applicatio
 - **Live game:** https://scarlet-twinz.github.io/TRACE-NULL/
 - **GitHub:** https://github.com/Scarlet-Twinz
 
+
 ## License
 
-This is a personal portfolio project. No open-source license is currently included.
+MIT License.
+
+See [LICENSE](LICENSE) for the full license text.
